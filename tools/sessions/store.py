@@ -191,31 +191,56 @@ async def get_members(session_id: str) -> list[dict]:
     ]
 
 
-async def add_member(session_id: str, owner_id: str, invitee_email: str) -> Optional[dict]:
+async def add_member(session_id: str, owner_id: str, invitee_email: str) -> "dict | str":
+    """
+    Returns dict on success, or error string:
+    'not_owner' | 'email_not_found' | 'already_member' | 'already_invited'
+    """
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        # Only owner can invite
         owns = await conn.fetchval(
             "SELECT 1 FROM sessions WHERE id = $1::uuid AND owner_id = $2::uuid",
             session_id, owner_id,
         )
         if not owns:
-            return None
+            return "not_owner"
+
         invitee = await conn.fetchrow(
             "SELECT id, username, email FROM users WHERE email = $1 AND is_active = true",
             invitee_email,
         )
         if not invitee:
-            return None
+            return "email_not_found"
+
+        invitee_id = str(invitee["id"])
+
+        is_member = await conn.fetchval(
+            "SELECT 1 FROM session_members WHERE session_id = $1::uuid AND user_id = $2::uuid",
+            session_id, invitee_id,
+        )
+        if is_member:
+            return "already_member"
+
+        already_invited = await conn.fetchval(
+            """
+            SELECT 1 FROM session_invitations
+            WHERE session_id = $1::uuid AND invitee_id = $2::uuid AND status = 'pending'
+            """,
+            session_id, invitee_id,
+        )
+        if already_invited:
+            return "already_invited"
+
         await conn.execute(
             """
-            INSERT INTO session_members (session_id, user_id)
-            VALUES ($1::uuid, $2::uuid)
-            ON CONFLICT DO NOTHING
+            INSERT INTO session_invitations (session_id, inviter_id, invitee_id)
+            VALUES ($1::uuid, $2::uuid, $3::uuid)
+            ON CONFLICT (session_id, invitee_id)
+            DO UPDATE SET status = 'pending', created_at = NOW()
             """,
-            session_id, invitee["id"],
+            session_id, owner_id, invitee_id,
         )
-    return {"id": str(invitee["id"]), "username": invitee["username"], "email": invitee["email"]}
+    return {"id": invitee_id, "username": invitee["username"], "email": invitee["email"]}
 
 
 async def remove_member(session_id: str, owner_id: str, member_user_id: str) -> bool:
@@ -289,6 +314,123 @@ async def get_session_by_share_token(token: str) -> Optional[dict]:
     if row is None:
         return None
     return _session_row(row)
+
+
+async def get_pending_invitations_for_session(session_id: str, owner_id: str) -> list[dict]:
+    """Pending invitations sent by owner for a specific session."""
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        owns = await conn.fetchval(
+            "SELECT 1 FROM sessions WHERE id = $1::uuid AND owner_id = $2::uuid",
+            session_id, owner_id,
+        )
+        if not owns:
+            return []
+        rows = await conn.fetch(
+            """
+            SELECT si.id, u.username, u.email, si.created_at
+            FROM session_invitations si
+            JOIN users u ON u.id = si.invitee_id
+            WHERE si.session_id = $1::uuid AND si.status = 'pending'
+            ORDER BY si.created_at
+            """,
+            session_id,
+        )
+    return [
+        {
+            "id": str(r["id"]),
+            "username": r["username"],
+            "email": r["email"],
+            "created_at": r["created_at"].isoformat(),
+        }
+        for r in rows
+    ]
+
+
+async def cancel_invitation(invitation_id: str, owner_id: str) -> bool:
+    """Owner cancels a pending invitation they sent."""
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            """
+            DELETE FROM session_invitations
+            WHERE id = $1::uuid AND inviter_id = $2::uuid AND status = 'pending'
+            """,
+            invitation_id, owner_id,
+        )
+    return result == "DELETE 1"
+
+
+async def list_invitations(user_id: str) -> list[dict]:
+    """Pending invitations received by the user (for inbox)."""
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT si.id, si.session_id, si.created_at,
+                   s.title AS session_title,
+                   u.username AS inviter_username
+            FROM session_invitations si
+            JOIN sessions s ON s.id = si.session_id
+            JOIN users u ON u.id = si.inviter_id
+            WHERE si.invitee_id = $1::uuid AND si.status = 'pending'
+            ORDER BY si.created_at DESC
+            """,
+            user_id,
+        )
+    return [
+        {
+            "id": str(r["id"]),
+            "session_id": str(r["session_id"]),
+            "session_title": r["session_title"],
+            "inviter_username": r["inviter_username"],
+            "created_at": r["created_at"].isoformat(),
+        }
+        for r in rows
+    ]
+
+
+async def get_pending_invitation_count(user_id: str) -> int:
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM session_invitations WHERE invitee_id = $1::uuid AND status = 'pending'",
+            user_id,
+        )
+    return count or 0
+
+
+async def respond_invitation(invitation_id: str, user_id: str, accept: bool) -> bool:
+    """Accept or decline a pending invitation. Returns True if processed."""
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                """
+                SELECT session_id FROM session_invitations
+                WHERE id = $1::uuid AND invitee_id = $2::uuid AND status = 'pending'
+                """,
+                invitation_id, user_id,
+            )
+            if row is None:
+                return False
+
+            status = "accepted" if accept else "declined"
+            await conn.execute(
+                "UPDATE session_invitations SET status = $1 WHERE id = $2::uuid",
+                status, invitation_id,
+            )
+
+            if accept:
+                await conn.execute(
+                    """
+                    INSERT INTO session_members (session_id, user_id)
+                    VALUES ($1::uuid, $2::uuid)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    str(row["session_id"]), user_id,
+                )
+    return True
 
 
 async def search_sessions_by_user(user_id: str, query: str) -> list[dict]:

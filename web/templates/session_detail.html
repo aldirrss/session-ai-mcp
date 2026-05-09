@@ -6,7 +6,15 @@
   <a href="/panel/web/sessions" style="font-size:14px; color:#64748b;">← Sessions</a>
 </div>
 
-{% if flash %}
+{% if flash == 'email_not_found' %}
+<div class="alert alert-error">Email tidak terdaftar. Pastikan user sudah memiliki akun.</div>
+{% elif flash == 'already_member' %}
+<div class="alert alert-error">User tersebut sudah menjadi member session ini.</div>
+{% elif flash == 'already_invited' %}
+<div class="alert alert-error">Undangan sudah dikirim, menunggu konfirmasi dari user.</div>
+{% elif flash == 'not_owner' %}
+<div class="alert alert-error">Hanya owner yang bisa mengundang member.</div>
+{% elif flash %}
 <div class="flash">Action completed: {{ flash }}</div>
 {% endif %}
 
@@ -63,6 +71,7 @@
 <!-- Share: invite members -->
 <div class="card" style="margin-bottom:16px;">
   <div class="section-title">Shared Members (read-write)</div>
+
   {% if members %}
   <table style="margin-bottom:16px;">
     <thead><tr><th>Username</th><th>Email</th><th>Joined</th><th></th></tr></thead>
@@ -84,8 +93,37 @@
     </tbody>
   </table>
   {% else %}
-  <p style="font-size:13px; color:#94a3b8; margin-bottom:16px;">No members yet.</p>
+  <p style="font-size:13px; color:#94a3b8; margin-bottom:12px;">No members yet.</p>
   {% endif %}
+
+  {% if pending_invites %}
+  <div style="margin-bottom:16px;">
+    <div style="font-size:12px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">
+      Pending Invitations
+    </div>
+    <table>
+      <thead><tr><th>Username</th><th>Email</th><th>Invited</th><th></th></tr></thead>
+      <tbody>
+      {% for inv in pending_invites %}
+        <tr>
+          <td style="color:#64748b;">{{ inv.username }}</td>
+          <td style="font-size:13px; color:#64748b;">{{ inv.email }}</td>
+          <td style="font-size:13px; color:#64748b;">{{ inv.created_at[:10] }}</td>
+          <td>
+            <span class="badge badge-yellow" style="margin-right:8px;">Pending</span>
+            <form method="POST" action="/panel/web/sessions/{{ session.id }}/action" style="display:inline;">
+              <input type="hidden" name="action" value="cancel_invite"/>
+              <input type="hidden" name="invitation_id" value="{{ inv.id }}"/>
+              <button class="btn btn-ghost btn-sm" type="submit">Cancel</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <form method="POST" action="/panel/web/sessions/{{ session.id }}/action" style="display:flex; gap:8px;">
     <input type="hidden" name="action" value="invite"/>
     <input type="email" name="email" placeholder="Invite by email…" style="flex:1;"/>

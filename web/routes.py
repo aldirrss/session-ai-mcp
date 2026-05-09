@@ -38,6 +38,11 @@ from tools.sessions.store import (
     revoke_share_token,
     search_sessions_by_user,
     get_session_by_share_token,
+    list_invitations,
+    get_pending_invitation_count,
+    get_pending_invitations_for_session,
+    cancel_invitation,
+    respond_invitation,
 )
 
 _logger = logging.getLogger("session-ai-mcp.web")
@@ -49,6 +54,10 @@ _env = Environment(loader=FileSystemLoader(_tpl_dir), autoescape=True)
 def _render(name: str, **ctx) -> HTMLResponse:
     tpl = _env.get_template(name)
     return HTMLResponse(tpl.render(app_name=config.APP_NAME, base_url=config.MCP_EXTERNAL_URL, **ctx))
+
+
+async def _inbox_count(user: dict) -> int:
+    return await get_pending_invitation_count(user["id"])
 
 
 # ---------------------------------------------------------------------------
@@ -160,23 +169,20 @@ async def web_sessions(request: Request) -> Response:
     show_archived = request.query_params.get("archived") == "1"
     query = request.query_params.get("q", "").strip()
 
-    if query:
-        sessions = await search_sessions_by_user(user["id"], query)
-        search_mode = True
-    else:
-        sessions = await list_sessions(show_archived=show_archived)
-        search_mode = False
-
-    # list_sessions uses context var — inject user manually for web routes
     from auth.context import set_current_user
     set_current_user(user)
     try:
-        sessions = await list_sessions(show_archived=show_archived)
+        if query:
+            sessions = await search_sessions_by_user(user["id"], query)
+        else:
+            sessions = await list_sessions(show_archived=show_archived)
     finally:
         set_current_user(None)
 
+    count = await _inbox_count(user)
     return _render("sessions.html", user=user, sessions=sessions,
-                   show_archived=show_archived, query=query)
+                   show_archived=show_archived, query=query,
+                   inbox_count=count, active_page="sessions")
 
 
 async def web_session_detail(request: Request) -> Response:
@@ -198,6 +204,7 @@ async def web_session_detail(request: Request) -> Response:
 
     is_owner = session["owner_id"] == user["id"]
     members = await get_members(session_id) if is_owner else []
+    pending_invites = await get_pending_invitations_for_session(session_id, user["id"]) if is_owner else []
 
     import db as _db
     pool = await _db.get_pool()
@@ -207,11 +214,13 @@ async def web_session_detail(request: Request) -> Response:
         )
 
     flash = request.query_params.get("msg", "")
+    count = await _inbox_count(user)
     return _render("session_detail.html", user=user, session=session,
                    is_owner=is_owner, members=members,
+                   pending_invites=pending_invites,
                    share_token=share_token,
                    public_url=f"{config.MCP_EXTERNAL_URL}/s/{share_token}" if share_token else None,
-                   flash=flash)
+                   flash=flash, inbox_count=count, active_page="sessions")
 
 
 async def web_session_action(request: Request) -> Response:
@@ -243,8 +252,12 @@ async def web_session_action(request: Request) -> Response:
         email = str(form.get("email", "")).strip()
         if email:
             result = await add_member(session_id, user["id"], email)
-            if result is None:
-                return RedirectResponse(f"/panel/web/sessions/{session_id}?msg=invite_failed", status_code=302)
+            if isinstance(result, str):
+                return RedirectResponse(f"/panel/web/sessions/{session_id}?msg={result}", status_code=302)
+    elif action == "cancel_invite":
+        invitation_id = str(form.get("invitation_id", ""))
+        if invitation_id:
+            await cancel_invitation(invitation_id, user["id"])
     elif action == "remove_member":
         member_id = str(form.get("member_id", ""))
         if member_id:
@@ -268,7 +281,9 @@ async def web_account(request: Request) -> Response:
 
     tokens = await list_tokens(user["id"])
     flash = request.query_params.get("msg", "")
-    return _render("account.html", user=user, tokens=tokens, flash=flash)
+    count = await _inbox_count(user)
+    return _render("account.html", user=user, tokens=tokens, flash=flash,
+                   inbox_count=count, active_page="account")
 
 
 async def web_account_action(request: Request) -> Response:
@@ -289,6 +304,37 @@ async def web_account_action(request: Request) -> Response:
             await delete_token(token_id, user["id"])
 
     return RedirectResponse("/panel/web/account?msg=done", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Inbox
+# ---------------------------------------------------------------------------
+
+async def web_inbox(request: Request) -> Response:
+    user = await _get_web_user(request)
+    if not user:
+        return _redirect_login("/panel/web/inbox")
+
+    invitations = await list_invitations(user["id"])
+    flash = request.query_params.get("msg", "")
+    count = len(invitations)
+    return _render("inbox.html", user=user, invitations=invitations, flash=flash,
+                   inbox_count=count, active_page="inbox")
+
+
+async def web_inbox_action(request: Request) -> Response:
+    user = await _get_web_user(request)
+    if not user:
+        return RedirectResponse("/panel/web/login", status_code=302)
+
+    form = await request.form()
+    invitation_id = str(form.get("invitation_id", ""))
+    action = str(form.get("action", ""))
+
+    if invitation_id and action in ("accept", "decline"):
+        await respond_invitation(invitation_id, user["id"], accept=(action == "accept"))
+
+    return RedirectResponse("/panel/web/inbox?msg=done", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -320,6 +366,9 @@ routes = [
 
     Route("/panel/web/account",        web_account,        methods=["GET"]),
     Route("/panel/web/account/action", web_account_action, methods=["POST"]),
+
+    Route("/panel/web/inbox",        web_inbox,        methods=["GET"]),
+    Route("/panel/web/inbox/action", web_inbox_action, methods=["POST"]),
 
     Route("/s/{token}", web_public_share, methods=["GET"]),
 ]

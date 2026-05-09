@@ -75,6 +75,13 @@
     .badge-green { background: #dcfce7; color: #15803d; }
     .badge-yellow { background: #fef9c3; color: #a16207; }
     .badge-gray { background: #f1f5f9; color: #475569; }
+    .badge-red { background: #fee2e2; color: #dc2626; }
+
+    /* Inbox badge on nav */
+    .nav-inbox-badge { display: inline-flex; align-items: center; justify-content: center;
+                       min-width: 18px; height: 18px; padding: 0 5px;
+                       background: #dc2626; color: #fff; border-radius: 9999px;
+                       font-size: 11px; font-weight: 700; margin-left: 4px; }
 
     /* Prose (session content) */
     .prose { font-size: 14px; line-height: 1.7; color: #374151; white-space: pre-wrap;
@@ -113,6 +120,9 @@
   <span class="nav-brand">{{ app_name }}</span>
   <div class="nav-links">
     <a href="/panel/web/sessions" {% if active_page == 'sessions' %}class="active"{% endif %}>Sessions</a>
+    <a href="/panel/web/inbox"    {% if active_page == 'inbox'    %}class="active"{% endif %}>
+      Inbox{% if inbox_count %}<span class="nav-inbox-badge">{{ inbox_count }}</span>{% endif %}
+    </a>
     <a href="/panel/web/account"  {% if active_page == 'account'  %}class="active"{% endif %}>Account</a>
   </div>
   <div class="nav-user">

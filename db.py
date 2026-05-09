@@ -158,6 +158,19 @@ _DDL_STEPS = [
     )
     """,
 
+    # Session invitations — inbox-based invite flow
+    """
+    CREATE TABLE IF NOT EXISTS session_invitations (
+        id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id  UUID        NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        inviter_id  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invitee_id  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status      TEXT        NOT NULL DEFAULT 'pending',
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (session_id, invitee_id)
+    )
+    """,
+
     # Token metadata — client name and IP at token creation time
     "ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS client_name TEXT",
     "ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS created_ip  TEXT",
@@ -180,6 +193,8 @@ _DDL_STEPS = [
     "CREATE INDEX IF NOT EXISTS idx_session_members_sess ON session_members (session_id)",
     "CREATE INDEX IF NOT EXISTS idx_session_members_user ON session_members (user_id)",
     "CREATE INDEX IF NOT EXISTS idx_share_tokens_session ON share_tokens (session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_invitations_invitee  ON session_invitations (invitee_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_invitations_session  ON session_invitations (session_id)",
 ]
 
 

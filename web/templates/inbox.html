@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Inbox — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Inbox</h1>
+  <p>Session invitations sent to you by other users.</p>
+</div>
+
+{% if flash %}
+<div class="flash">Action completed.</div>
+{% endif %}
+
+{% if invitations %}
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>Invited by</th>
+        <th>Received</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for inv in invitations %}
+      <tr>
+        <td style="font-size:14px; font-weight:500;">{{ inv.session_title }}</td>
+        <td style="font-size:13px; color:#64748b;">{{ inv.inviter_username }}</td>
+        <td style="font-size:13px; color:#64748b;">{{ inv.created_at[:10] }}</td>
+        <td style="white-space:nowrap;">
+          <form method="POST" action="/panel/web/inbox/action" style="display:inline;">
+            <input type="hidden" name="invitation_id" value="{{ inv.id }}"/>
+            <input type="hidden" name="action" value="accept"/>
+            <button class="btn btn-primary btn-sm" type="submit">Accept</button>
+          </form>
+          <form method="POST" action="/panel/web/inbox/action" style="display:inline; margin-left:6px;">
+            <input type="hidden" name="invitation_id" value="{{ inv.id }}"/>
+            <input type="hidden" name="action" value="decline"/>
+            <button class="btn btn-ghost btn-sm" type="submit">Decline</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty">
+    <h3>No pending invitations</h3>
+    <p>When someone invites you to a session, it will appear here.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
