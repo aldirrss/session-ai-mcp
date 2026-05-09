@@ -1,4 +1,4 @@
-# session-ai-mcp
+# SESSION AI MCP
 
 A lightweight MCP (Model Context Protocol) server for session continuity — persist and resume project context across Claude conversations.
 
