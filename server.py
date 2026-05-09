@@ -4,19 +4,11 @@ session-ai-mcp — MCP Server entry point.
 
 Transport : Streamable HTTP (compatible with claude.ai web and Claude Code CLI)
 Auth      : OAuth 2.0 only — users must login via web portal before connecting CLI.
-
-OAuth 2.0 Authorization Server (MCP spec):
-  GET  /.well-known/oauth-authorization-server
-  GET  /.well-known/oauth-protected-resource
-  POST /oauth/register
-  GET  /oauth/authorize
-  POST /oauth/authorize
-  POST /oauth/token
-  POST /oauth/revoke
 """
 
 import logging
 import sys
+from contextlib import asynccontextmanager
 
 import config
 
@@ -49,8 +41,10 @@ async def _validate_origin(self, request, is_post=False):
 _ts.TransportSecurityMiddleware.validate_request = _validate_origin
 
 from mcp.server.fastmcp import FastMCP
-from starlette.routing import Route, Mount
-from starlette.staticfiles import StaticFiles
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Mount, Route
 
 import db
 from auth.middleware import UserAuthMiddleware
@@ -64,37 +58,56 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 
-mcp = FastMCP(
-    name=config.APP_NAME,
-    lifespan=db.lifespan,
-)
+_logger = logging.getLogger("session-ai-mcp")
 
+
+# ---------------------------------------------------------------------------
+# MCP server (no lifespan — handled by outer Starlette app)
+# ---------------------------------------------------------------------------
+
+mcp = FastMCP(name=config.APP_NAME)
 register_all(mcp)
+_mcp_app = mcp.streamable_http_app()
 
-# Build Starlette app and attach middleware + routes
-app = mcp.streamable_http_app()
 
-# Inject auth middleware
-app.add_middleware(UserAuthMiddleware)
+# ---------------------------------------------------------------------------
+# Lifespan — runs init_schema() on startup before any request is served
+# ---------------------------------------------------------------------------
 
-# Mount OAuth + Web routes
-from starlette.routing import Router
-from starlette.middleware import Middleware
+@asynccontextmanager
+async def lifespan(app):
+    await db.init_schema()
+    _logger.info("Database schema ready")
+    try:
+        yield
+    finally:
+        await db.close_pool()
 
-# Attach extra routes by mounting them on the existing app
-for route in oauth_routes + web_routes:
-    app.routes.append(route)
 
+# ---------------------------------------------------------------------------
 # Health check
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-
+# ---------------------------------------------------------------------------
 
 async def health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok", "app": config.APP_NAME})
 
 
-app.routes.append(Route("/health", health))
+# ---------------------------------------------------------------------------
+# App — specific routes first, MCP catch-all last
+# ---------------------------------------------------------------------------
+
+app = Starlette(
+    routes=[
+        Route("/health", health),
+        *oauth_routes,
+        *web_routes,
+        # MCP app handles /mcp — must be last (catch-all)
+        Mount("/", app=_mcp_app),
+    ],
+    lifespan=lifespan,
+)
+
+app.add_middleware(UserAuthMiddleware)
 
 
 if __name__ == "__main__":
