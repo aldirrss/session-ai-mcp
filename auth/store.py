@@ -107,17 +107,19 @@ async def validate_token(raw_token: str) -> Optional[dict]:
 
 
 async def create_oauth_code(
-    user_id: str, client_id: str, redirect_uri: str, code_challenge: str
+    user_id: str, client_id: str, redirect_uri: str, code_challenge: str,
+    client_name: str = "",
 ) -> str:
     code = secrets.token_urlsafe(32)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO oauth_codes (code, user_id, client_id, redirect_uri, code_challenge, expires_at)
-            VALUES ($1, $2::uuid, $3, $4, $5, NOW() + INTERVAL '10 minutes')
+            INSERT INTO oauth_codes
+                (code, user_id, client_id, redirect_uri, code_challenge, expires_at, client_name)
+            VALUES ($1, $2::uuid, $3, $4, $5, NOW() + INTERVAL '10 minutes', $6)
             """,
-            code, user_id, client_id, redirect_uri, code_challenge,
+            code, user_id, client_id, redirect_uri, code_challenge, client_name or None,
         )
     return code
 
@@ -134,7 +136,7 @@ async def exchange_oauth_code(
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT oc.user_id, oc.code_challenge, oc.redirect_uri
+            SELECT oc.user_id, oc.code_challenge, oc.redirect_uri, oc.client_name
             FROM oauth_codes oc
             WHERE oc.code = $1
               AND oc.used = false
@@ -155,6 +157,7 @@ async def exchange_oauth_code(
             return None
 
         stored_redirect_uri = row["redirect_uri"]
+        stored_client_name = row["client_name"] or ""
 
         await conn.execute(
             "UPDATE oauth_codes SET used = true WHERE code = $1", code
@@ -164,26 +167,58 @@ async def exchange_oauth_code(
     user = await get_user_by_id(user_id)
     if user:
         user["oauth_redirect_uri"] = stored_redirect_uri
+        user["oauth_client_name"] = stored_client_name
     return user
 
 
 def _detect_client(redirect_uri: str = "", client_name: str = "", user_agent: str = "") -> str:
-    """Detect client type — redirect_uri is the most reliable signal."""
-    if "claude.ai" in redirect_uri:
+    """Detect client type from redirect_uri (most reliable), then client_name/User-Agent."""
+    uri = redirect_uri.lower()
+    ua = user_agent.lower()
+    cn = client_name.lower()
+
+    # --- redirect_uri based (most reliable) ---
+    if "claude.ai" in uri:
         return "claude.ai Web"
-    if redirect_uri and ("localhost" in redirect_uri or "127.0.0.1" in redirect_uri):
-        combined = (client_name + " " + user_agent).lower()
-        if "vscode" in combined or "visual studio code" in combined:
+    if "aistudio.google.com" in uri or "generativelanguage.googleapis.com" in uri:
+        return "Google AI Studio"
+    if "gemini.google.com" in uri:
+        return "Gemini Web"
+    if "cursor://" in uri or "cursor.sh" in uri or "cursor.com" in uri:
+        return "Cursor"
+    if "windsurf://" in uri or "windsurf" in uri:
+        return "Windsurf"
+    if "zed.dev" in uri or "zed://" in uri:
+        return "Zed"
+    if "continue" in uri and ("localhost" in uri or "127.0.0.1" in uri):
+        return "Continue.dev"
+    if "cline" in uri:
+        return "Cline"
+
+    # --- localhost/127.0.0.1: use client_name or User-Agent to differentiate ---
+    if "localhost" in uri or "127.0.0.1" in uri:
+        if "cursor" in cn or "cursor" in ua:
+            return "Cursor"
+        if "windsurf" in cn or "windsurf" in ua:
+            return "Windsurf"
+        if "zed" in cn or "zed" in ua:
+            return "Zed"
+        if "vscode" in cn or "vscode" in ua or "visual studio code" in ua:
             return "VSCode Extension"
+        if "continue" in cn or "continue" in ua:
+            return "Continue.dev"
+        if "cline" in cn or "cline" in ua:
+            return "Cline"
+        if "gemini" in cn or "gemini" in ua:
+            return "Gemini CLI"
+        if "claude" in cn or "claude" in ua:
+            return "Claude Code CLI"
+        # Show raw client_name if available, else generic CLI label
+        if client_name:
+            return client_name[:64]
         return "Claude Code CLI"
-    # Fallback: client_name / User-Agent
-    combined = (client_name + " " + user_agent).lower()
-    if "claude.ai" in combined:
-        return "claude.ai Web"
-    if "vscode" in combined:
-        return "VSCode Extension"
-    if "claude-code" in combined or "claude_code" in combined:
-        return "Claude Code CLI"
+
+    # --- Fallback: use client_name as-is (best effort) ---
     if client_name:
         return client_name[:64]
     return "Unknown Client"

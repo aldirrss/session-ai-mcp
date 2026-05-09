@@ -162,6 +162,9 @@ _DDL_STEPS = [
     "ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS client_name TEXT",
     "ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS created_ip  TEXT",
 
+    # Store client_name from /oauth/authorize so it's available at token exchange
+    "ALTER TABLE oauth_codes ADD COLUMN IF NOT EXISTS client_name TEXT",
+
     # Indexes
     "CREATE INDEX IF NOT EXISTS idx_users_email          ON users (email)",
     "CREATE INDEX IF NOT EXISTS idx_users_username       ON users (username)",

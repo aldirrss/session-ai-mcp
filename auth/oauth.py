@@ -265,7 +265,7 @@ async def oauth_authorize_post(request: Request) -> Response:
         user = await validate_oauth_session(session_token) if session_token else None
         if not user:
             return _error("Session expired. Please log in again.")
-        code = await create_oauth_code(user["id"], client_id, redirect_uri, code_challenge)
+        code = await create_oauth_code(user["id"], client_id, redirect_uri, code_challenge, client_name)
         return RedirectResponse(_build_redirect(redirect_uri, {"code": code, "state": state}), status_code=302)
 
     email = str(form.get("email", "")).strip()
@@ -280,7 +280,7 @@ async def oauth_authorize_post(request: Request) -> Response:
     if not user:
         return _error("Invalid credentials. Please try again.")
 
-    code = await create_oauth_code(user["id"], client_id, redirect_uri, code_challenge)
+    code = await create_oauth_code(user["id"], client_id, redirect_uri, code_challenge, client_name)
     session_tok = await create_oauth_session(user["id"])
 
     response = RedirectResponse(_build_redirect(redirect_uri, {"code": code, "state": state}), status_code=302)
@@ -327,9 +327,10 @@ async def oauth_token(request: Request) -> JSONResponse:
         or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
         or (request.client.host if request.client else "")
     )
-    # redirect_uri stored in oauth_codes is most reliable for client detection
+    # Use redirect_uri + stored client_name from oauth_codes for accurate detection
     oauth_redirect_uri = user.get("oauth_redirect_uri", "")
-    detected_client = _detect_client(oauth_redirect_uri, raw_client_name, user_agent)
+    oauth_client_name = user.get("oauth_client_name", "") or raw_client_name
+    detected_client = _detect_client(oauth_redirect_uri, oauth_client_name, user_agent)
 
     raw_token = await create_token(
         user["id"],
