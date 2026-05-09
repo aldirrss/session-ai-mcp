@@ -327,7 +327,9 @@ async def oauth_token(request: Request) -> JSONResponse:
         or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
         or (request.client.host if request.client else "")
     )
-    detected_client = _detect_client(raw_client_name, user_agent)
+    # redirect_uri stored in oauth_codes is most reliable for client detection
+    oauth_redirect_uri = user.get("oauth_redirect_uri", "")
+    detected_client = _detect_client(oauth_redirect_uri, raw_client_name, user_agent)
 
     raw_token = await create_token(
         user["id"],

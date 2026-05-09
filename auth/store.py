@@ -125,7 +125,8 @@ async def create_oauth_code(
 async def exchange_oauth_code(
     code: str, code_verifier: str, redirect_uri: str
 ) -> Optional[dict]:
-    """Exchange authorization code for user dict. Validates PKCE S256."""
+    """Exchange authorization code for user dict. Validates PKCE S256.
+    Returns user dict with extra key 'oauth_redirect_uri' for client detection."""
     import base64
     import hashlib
 
@@ -153,23 +154,35 @@ async def exchange_oauth_code(
         if row["redirect_uri"] != redirect_uri:
             return None
 
+        stored_redirect_uri = row["redirect_uri"]
+
         await conn.execute(
             "UPDATE oauth_codes SET used = true WHERE code = $1", code
         )
-
         user_id = str(row["user_id"])
 
-    return await get_user_by_id(user_id)
+    user = await get_user_by_id(user_id)
+    if user:
+        user["oauth_redirect_uri"] = stored_redirect_uri
+    return user
 
 
-def _detect_client(client_name: str, user_agent: str = "") -> str:
-    """Detect client type from client_name or User-Agent."""
-    combined = (client_name + " " + user_agent).lower()
-    if "claude.ai" in combined or "claude-web" in combined:
+def _detect_client(redirect_uri: str = "", client_name: str = "", user_agent: str = "") -> str:
+    """Detect client type — redirect_uri is the most reliable signal."""
+    if "claude.ai" in redirect_uri:
         return "claude.ai Web"
-    if "vscode" in combined or "visual studio code" in combined:
+    if redirect_uri and ("localhost" in redirect_uri or "127.0.0.1" in redirect_uri):
+        combined = (client_name + " " + user_agent).lower()
+        if "vscode" in combined or "visual studio code" in combined:
+            return "VSCode Extension"
+        return "Claude Code CLI"
+    # Fallback: client_name / User-Agent
+    combined = (client_name + " " + user_agent).lower()
+    if "claude.ai" in combined:
+        return "claude.ai Web"
+    if "vscode" in combined:
         return "VSCode Extension"
-    if "claude-code" in combined or "claude_code" in combined or "claudecode" in combined:
+    if "claude-code" in combined or "claude_code" in combined:
         return "Claude Code CLI"
     if client_name:
         return client_name[:64]
