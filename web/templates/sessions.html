@@ -11,18 +11,18 @@
 <div class="flash">Session deleted successfully.</div>
 {% endif %}
 
-<form class="search-bar" method="GET" action="/web/sessions">
+<form class="search-bar" method="GET" action="/panel/web/sessions">
   <input type="text" name="q" value="{{ query }}" placeholder="Search sessions…"/>
   <button class="btn btn-ghost" type="submit">Search</button>
-  {% if query %}<a class="btn btn-ghost" href="/web/sessions">Clear</a>{% endif %}
+  {% if query %}<a class="btn btn-ghost" href="/panel/web/sessions">Clear</a>{% endif %}
 </form>
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
   <div>
     {% if show_archived %}
-      <a href="/web/sessions" class="btn btn-ghost btn-sm">Hide archived</a>
+      <a href="/panel/web/sessions" class="btn btn-ghost btn-sm">Hide archived</a>
     {% else %}
-      <a href="/web/sessions?archived=1" class="btn btn-ghost btn-sm">Show archived</a>
+      <a href="/panel/web/sessions?archived=1" class="btn btn-ghost btn-sm">Show archived</a>
     {% endif %}
   </div>
 </div>
@@ -43,7 +43,7 @@
       {% for s in sessions %}
       <tr>
         <td>
-          <a href="/web/sessions/{{ s.id }}" style="font-weight:500; color:#0f172a;">{{ s.title }}</a>
+          <a href="/panel/web/sessions/{{ s.id }}" style="font-weight:500; color:#0f172a;">{{ s.title }}</a>
           <div style="font-size:12px; color:#94a3b8; margin-top:2px;">{{ s.id }}</div>
         </td>
         <td style="font-size:13px; color:#475569;">
@@ -56,7 +56,7 @@
         </td>
         <td style="font-size:13px; color:#64748b;">{{ s.updated_at[:10] }}</td>
         <td>
-          <a href="/web/sessions/{{ s.id }}" class="btn btn-ghost btn-sm">Open</a>
+          <a href="/panel/web/sessions/{{ s.id }}" class="btn btn-ghost btn-sm">Open</a>
         </td>
       </tr>
       {% endfor %}

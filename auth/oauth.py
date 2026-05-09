@@ -231,7 +231,7 @@ async def oauth_authorize_get(request: Request) -> Response:
         code_challenge=_esc(code_challenge), state=_esc(state),
         client_name=_esc(client_name), error_html="",
         cancel_url=_esc(cancel_url),
-        register_url=_esc(f"{BASE}/web/register"),
+        register_url=_esc(f"{BASE}/panel/web/register"),
     ))
 
 
@@ -256,7 +256,7 @@ async def oauth_authorize_post(request: Request) -> Response:
             client_name=_esc(client_name),
             error_html=f'<div class="error">{_esc(msg)}</div>',
             cancel_url=_esc(cancel_url),
-            register_url=_esc(f"{BASE}/web/register"),
+            register_url=_esc(f"{BASE}/panel/web/register"),
         ), status_code=400)
 
     if action == "preauth":

@@ -21,7 +21,7 @@ _logger = logging.getLogger("session-ai-mcp.auth")
 
 class UserAuthMiddleware(BaseHTTPMiddleware):
 
-    _OPEN_PREFIXES = ("/.well-known/", "/oauth/", "/health", "/s/", "/web/")
+    _OPEN_PREFIXES = ("/.well-known/", "/oauth/", "/health", "/s/", "/panel/web/")
 
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path

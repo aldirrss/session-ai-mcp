@@ -64,8 +64,8 @@ async def _get_web_user(request: Request) -> dict | None:
     return await validate_oauth_session(token)
 
 
-def _redirect_login(next_url: str = "/web/sessions") -> RedirectResponse:
-    return RedirectResponse(f"/web/login?next={next_url}", status_code=302)
+def _redirect_login(next_url: str = "/panel/web/sessions") -> RedirectResponse:
+    return RedirectResponse(f"/panel/web/login?next={next_url}", status_code=302)
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -85,16 +85,16 @@ def _set_session_cookie(response: Response, token: str) -> None:
 async def web_login_get(request: Request) -> Response:
     user = await _get_web_user(request)
     if user:
-        return RedirectResponse("/web/sessions", status_code=302)
+        return RedirectResponse("/panel/web/sessions", status_code=302)
     error = request.query_params.get("error", "")
-    return _render("login.html", error=error, next=request.query_params.get("next", "/web/sessions"))
+    return _render("login.html", error=error, next=request.query_params.get("next", "/panel/web/sessions"))
 
 
 async def web_login_post(request: Request) -> Response:
     form = await request.form()
     email = str(form.get("email", "")).strip()
     password = str(form.get("password", ""))
-    next_url = str(form.get("next", "/web/sessions"))
+    next_url = str(form.get("next", "/panel/web/sessions"))
 
     if not email or not password:
         return _render("login.html", error="Email and password are required.", next=next_url)
@@ -112,7 +112,7 @@ async def web_login_post(request: Request) -> Response:
 async def web_register_get(request: Request) -> Response:
     user = await _get_web_user(request)
     if user:
-        return RedirectResponse("/web/sessions", status_code=302)
+        return RedirectResponse("/panel/web/sessions", status_code=302)
     return _render("register.html", error="")
 
 
@@ -136,13 +136,13 @@ async def web_register_post(request: Request) -> Response:
         return _render("register.html", error="Username or email already taken.")
 
     token = await create_oauth_session(user["id"])
-    response = RedirectResponse("/web/sessions", status_code=302)
+    response = RedirectResponse("/panel/web/sessions", status_code=302)
     _set_session_cookie(response, token)
     return response
 
 
 async def web_logout(request: Request) -> Response:
-    response = RedirectResponse("/web/login", status_code=302)
+    response = RedirectResponse("/panel/web/login", status_code=302)
     response.delete_cookie(_WEB_COOKIE)
     return response
 
@@ -181,7 +181,7 @@ async def web_sessions(request: Request) -> Response:
 async def web_session_detail(request: Request) -> Response:
     user = await _get_web_user(request)
     if not user:
-        return _redirect_login(f"/web/sessions/{request.path_params['session_id']}")
+        return _redirect_login(f"/panel/web/sessions/{request.path_params['session_id']}")
 
     session_id = request.path_params["session_id"]
 
@@ -217,7 +217,7 @@ async def web_session_action(request: Request) -> Response:
     """POST handler for session lifecycle actions from detail page."""
     user = await _get_web_user(request)
     if not user:
-        return RedirectResponse("/web/login", status_code=302)
+        return RedirectResponse("/panel/web/login", status_code=302)
 
     session_id = request.path_params["session_id"]
     form = await request.form()
@@ -225,7 +225,7 @@ async def web_session_action(request: Request) -> Response:
 
     if action == "delete":
         await delete_session(session_id, user["id"])
-        return RedirectResponse("/web/sessions?msg=deleted", status_code=302)
+        return RedirectResponse("/panel/web/sessions?msg=deleted", status_code=302)
     elif action == "pin":
         await set_pinned(session_id, user["id"], True)
     elif action == "unpin":
@@ -243,7 +243,7 @@ async def web_session_action(request: Request) -> Response:
         if email:
             result = await add_member(session_id, user["id"], email)
             if result is None:
-                return RedirectResponse(f"/web/sessions/{session_id}?msg=invite_failed", status_code=302)
+                return RedirectResponse(f"/panel/web/sessions/{session_id}?msg=invite_failed", status_code=302)
     elif action == "remove_member":
         member_id = str(form.get("member_id", ""))
         if member_id:
@@ -253,7 +253,7 @@ async def web_session_action(request: Request) -> Response:
     elif action == "share_revoke":
         await revoke_share_token(session_id, user["id"])
 
-    return RedirectResponse(f"/web/sessions/{session_id}?msg={action}", status_code=302)
+    return RedirectResponse(f"/panel/web/sessions/{session_id}?msg={action}", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +263,7 @@ async def web_session_action(request: Request) -> Response:
 async def web_account(request: Request) -> Response:
     user = await _get_web_user(request)
     if not user:
-        return _redirect_login("/web/account")
+        return _redirect_login("/panel/web/account")
 
     tokens = await list_tokens(user["id"])
     flash = request.query_params.get("msg", "")
@@ -273,7 +273,7 @@ async def web_account(request: Request) -> Response:
 async def web_account_action(request: Request) -> Response:
     user = await _get_web_user(request)
     if not user:
-        return RedirectResponse("/web/login", status_code=302)
+        return RedirectResponse("/panel/web/login", status_code=302)
 
     form = await request.form()
     action = str(form.get("action", ""))
@@ -283,7 +283,7 @@ async def web_account_action(request: Request) -> Response:
         if token_id:
             await revoke_token(token_id, user["id"])
 
-    return RedirectResponse("/web/account?msg=done", status_code=302)
+    return RedirectResponse("/panel/web/account?msg=done", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -303,18 +303,18 @@ async def web_public_share(request: Request) -> Response:
 # ---------------------------------------------------------------------------
 
 routes = [
-    Route("/web/login",    web_login_get,    methods=["GET"]),
-    Route("/web/login",    web_login_post,   methods=["POST"]),
-    Route("/web/register", web_register_get, methods=["GET"]),
-    Route("/web/register", web_register_post, methods=["POST"]),
-    Route("/web/logout",   web_logout,       methods=["GET", "POST"]),
+    Route("/panel/web/login",    web_login_get,    methods=["GET"]),
+    Route("/panel/web/login",    web_login_post,   methods=["POST"]),
+    Route("/panel/web/register", web_register_get, methods=["GET"]),
+    Route("/panel/web/register", web_register_post, methods=["POST"]),
+    Route("/panel/web/logout",   web_logout,       methods=["GET", "POST"]),
 
-    Route("/web/sessions",                     web_sessions,       methods=["GET"]),
-    Route("/web/sessions/{session_id}",        web_session_detail, methods=["GET"]),
-    Route("/web/sessions/{session_id}/action", web_session_action, methods=["POST"]),
+    Route("/panel/web/sessions",                     web_sessions,       methods=["GET"]),
+    Route("/panel/web/sessions/{session_id}",        web_session_detail, methods=["GET"]),
+    Route("/panel/web/sessions/{session_id}/action", web_session_action, methods=["POST"]),
 
-    Route("/web/account",        web_account,        methods=["GET"]),
-    Route("/web/account/action", web_account_action, methods=["POST"]),
+    Route("/panel/web/account",        web_account,        methods=["GET"]),
+    Route("/panel/web/account/action", web_account_action, methods=["POST"]),
 
     Route("/s/{token}", web_public_share, methods=["GET"]),
 ]

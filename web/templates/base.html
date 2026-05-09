@@ -112,12 +112,12 @@
 <nav>
   <span class="nav-brand">{{ app_name }}</span>
   <div class="nav-links">
-    <a href="/web/sessions" {% if active_page == 'sessions' %}class="active"{% endif %}>Sessions</a>
-    <a href="/web/account"  {% if active_page == 'account'  %}class="active"{% endif %}>Account</a>
+    <a href="/panel/web/sessions" {% if active_page == 'sessions' %}class="active"{% endif %}>Sessions</a>
+    <a href="/panel/web/account"  {% if active_page == 'account'  %}class="active"{% endif %}>Account</a>
   </div>
   <div class="nav-user">
     <strong>{{ user.username }}</strong>
-    <form method="POST" action="/web/logout" style="margin:0">
+    <form method="POST" action="/panel/web/logout" style="margin:0">
       <button class="btn btn-ghost btn-sm" type="submit">Logout</button>
     </form>
   </div>

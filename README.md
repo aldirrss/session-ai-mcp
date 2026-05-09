@@ -71,7 +71,7 @@ The server starts on port `8765`. Point your reverse proxy (Nginx, Caddy, Cloudf
 
 ### 3. Register an account
 
-Open `https://mcp.yourdomain.com/web/register` and create your account.
+Open `https://mcp.yourdomain.com/panel/web/register` and create your account.
 
 ### 4. Connect Claude Code CLI
 
@@ -170,15 +170,15 @@ user_me()
 
 ## Web Portal
 
-The web portal is available at `https://mcp.yourdomain.com/web/`.
+The web portal is available at `https://mcp.yourdomain.com/panel/web/`.
 
 | Route | Description |
 |---|---|
-| `/web/login` | Sign in to the portal |
-| `/web/register` | Create a new account |
-| `/web/sessions` | Dashboard — list and search sessions |
-| `/web/sessions/{id}` | Session detail — view, rename, manage sharing |
-| `/web/account` | View profile and manage active OAuth tokens |
+| `/panel/web/login` | Sign in to the portal |
+| `/panel/web/register` | Create a new account |
+| `/panel/web/sessions` | Dashboard — list and search sessions |
+| `/panel/web/sessions/{id}` | Session detail — view, rename, manage sharing |
+| `/panel/web/account` | View profile and manage active OAuth tokens |
 | `/s/{token}` | Public read-only view (no login required) |
 
 ### Session Management

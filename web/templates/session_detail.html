@@ -3,7 +3,7 @@
 
 {% block content %}
 <div style="margin-bottom:20px;">
-  <a href="/web/sessions" style="font-size:14px; color:#64748b;">← Sessions</a>
+  <a href="/panel/web/sessions" style="font-size:14px; color:#64748b;">← Sessions</a>
 </div>
 
 {% if flash %}
@@ -22,19 +22,19 @@
   </div>
   {% if is_owner %}
   <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <form method="POST" action="/web/sessions/{{ session.id }}/action">
+    <form method="POST" action="/panel/web/sessions/{{ session.id }}/action">
       <input type="hidden" name="action" value="{% if session.pinned %}unpin{% else %}pin{% endif %}"/>
       <button class="btn btn-ghost btn-sm" type="submit">
         {% if session.pinned %}Unpin{% else %}Pin{% endif %}
       </button>
     </form>
-    <form method="POST" action="/web/sessions/{{ session.id }}/action">
+    <form method="POST" action="/panel/web/sessions/{{ session.id }}/action">
       <input type="hidden" name="action" value="{% if session.archived %}restore{% else %}archive{% endif %}"/>
       <button class="btn btn-ghost btn-sm" type="submit">
         {% if session.archived %}Restore{% else %}Archive{% endif %}
       </button>
     </form>
-    <form method="POST" action="/web/sessions/{{ session.id }}/action"
+    <form method="POST" action="/panel/web/sessions/{{ session.id }}/action"
           onsubmit="return confirm('Delete this session permanently?')">
       <input type="hidden" name="action" value="delete"/>
       <button class="btn btn-danger btn-sm" type="submit">Delete</button>
@@ -53,7 +53,7 @@
 <!-- Rename -->
 <div class="card" style="margin-bottom:16px;">
   <div class="section-title">Rename</div>
-  <form method="POST" action="/web/sessions/{{ session.id }}/action" style="display:flex; gap:8px;">
+  <form method="POST" action="/panel/web/sessions/{{ session.id }}/action" style="display:flex; gap:8px;">
     <input type="hidden" name="action" value="rename"/>
     <input type="text" name="title" value="{{ session.title }}" style="flex:1;"/>
     <button class="btn btn-ghost" type="submit">Rename</button>
@@ -73,7 +73,7 @@
         <td style="font-size:13px; color:#64748b;">{{ m.email }}</td>
         <td style="font-size:13px; color:#64748b;">{{ m.joined_at[:10] }}</td>
         <td>
-          <form method="POST" action="/web/sessions/{{ session.id }}/action">
+          <form method="POST" action="/panel/web/sessions/{{ session.id }}/action">
             <input type="hidden" name="action" value="remove_member"/>
             <input type="hidden" name="member_id" value="{{ m.id }}"/>
             <button class="btn btn-danger btn-sm" type="submit">Remove</button>
@@ -86,7 +86,7 @@
   {% else %}
   <p style="font-size:13px; color:#94a3b8; margin-bottom:16px;">No members yet.</p>
   {% endif %}
-  <form method="POST" action="/web/sessions/{{ session.id }}/action" style="display:flex; gap:8px;">
+  <form method="POST" action="/panel/web/sessions/{{ session.id }}/action" style="display:flex; gap:8px;">
     <input type="hidden" name="action" value="invite"/>
     <input type="email" name="email" placeholder="Invite by email…" style="flex:1;"/>
     <button class="btn btn-primary" type="submit">Invite</button>
@@ -101,7 +101,7 @@
     <code>{{ public_url }}</code>
     <button onclick="navigator.clipboard.writeText('{{ public_url }}')" class="btn btn-ghost btn-sm" type="button">Copy</button>
   </div>
-  <form method="POST" action="/web/sessions/{{ session.id }}/action">
+  <form method="POST" action="/panel/web/sessions/{{ session.id }}/action">
     <input type="hidden" name="action" value="share_revoke"/>
     <button class="btn btn-danger btn-sm" type="submit">Revoke link</button>
   </form>
@@ -109,7 +109,7 @@
   <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
     Generate a public link so anyone (without an account) can read this session.
   </p>
-  <form method="POST" action="/web/sessions/{{ session.id }}/action">
+  <form method="POST" action="/panel/web/sessions/{{ session.id }}/action">
     <input type="hidden" name="action" value="share_create"/>
     <button class="btn btn-primary" type="submit">Generate public link</button>
   </form>
