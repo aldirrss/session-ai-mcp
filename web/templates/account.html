@@ -20,15 +20,17 @@
 <div class="card">
   <div class="section-title">Active Tokens</div>
   <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
-    Tokens are issued automatically when you connect Claude Code CLI via OAuth.
-    Revoke a token to disconnect that client.
+    Tokens are issued automatically when you connect via OAuth.
+    Revoke a token to disconnect that client. Revoked tokens can be permanently deleted.
   </p>
   {% if tokens %}
   <table>
     <thead>
       <tr>
-        <th>Name</th>
+        <th>Client</th>
         <th>Prefix</th>
+        <th>IP</th>
+        <th>First login</th>
         <th>Last used</th>
         <th>Expires</th>
         <th></th>
@@ -37,20 +39,30 @@
     <tbody>
     {% for t in tokens %}
       <tr style="{% if t.revoked %}opacity:0.45;{% endif %}">
-        <td style="font-size:14px;">{{ t.name }}</td>
+        <td>
+          <div style="font-size:14px; font-weight:500;">{{ t.client_name }}</div>
+          {% if t.revoked %}<span class="badge badge-gray" style="font-size:11px;">Revoked</span>{% endif %}
+        </td>
         <td><code style="font-size:12px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">{{ t.prefix }}…</code></td>
+        <td style="font-size:13px; color:#64748b;">{{ t.created_ip }}</td>
+        <td style="font-size:13px; color:#64748b;">{{ t.created_at[:10] }}</td>
         <td style="font-size:13px; color:#64748b;">{{ t.last_used_at[:10] if t.last_used_at else 'Never' }}</td>
         <td style="font-size:13px; color:#64748b;">{{ t.expires_at[:10] if t.expires_at else '—' }}</td>
-        <td>
+        <td style="white-space:nowrap;">
           {% if not t.revoked %}
-          <form method="POST" action="/panel/web/account/action">
+          <form method="POST" action="/panel/web/account/action" style="display:inline;">
             <input type="hidden" name="action" value="revoke_token"/>
             <input type="hidden" name="token_id" value="{{ t.id }}"/>
             <button class="btn btn-danger btn-sm" type="submit"
-                    onclick="return confirm('Revoke this token?')">Revoke</button>
+                    onclick="return confirm('Revoke this token? The client will be disconnected.')">Revoke</button>
           </form>
           {% else %}
-          <span class="badge badge-gray">Revoked</span>
+          <form method="POST" action="/panel/web/account/action" style="display:inline;">
+            <input type="hidden" name="action" value="delete_token"/>
+            <input type="hidden" name="token_id" value="{{ t.id }}"/>
+            <button class="btn btn-ghost btn-sm" type="submit"
+                    onclick="return confirm('Permanently delete this token record?')">Delete</button>
+          </form>
           {% endif %}
         </td>
       </tr>
@@ -60,7 +72,7 @@
   {% else %}
   <div class="empty">
     <h3>No tokens yet</h3>
-    <p>Connect Claude Code CLI using OAuth to generate a token.</p>
+    <p>Connect via OAuth to generate a token.</p>
   </div>
   {% endif %}
 </div>

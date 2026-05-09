@@ -22,6 +22,7 @@ from auth.store import (
     get_user_by_id,
     list_tokens,
     revoke_token,
+    delete_token,
 )
 from tools.sessions.store import (
     list_sessions,
@@ -282,6 +283,10 @@ async def web_account_action(request: Request) -> Response:
         token_id = str(form.get("token_id", ""))
         if token_id:
             await revoke_token(token_id, user["id"])
+    elif action == "delete_token":
+        token_id = str(form.get("token_id", ""))
+        if token_id:
+            await delete_token(token_id, user["id"])
 
     return RedirectResponse("/panel/web/account?msg=done", status_code=302)
 

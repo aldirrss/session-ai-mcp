@@ -51,8 +51,9 @@
         </td>
         <td>
           {% if s.pinned %}<span class="badge badge-blue">Pinned</span> {% endif %}
-          {% if s.archived %}<span class="badge badge-gray">Archived</span> {% endif %}
+          {% if s.archived %}<span class="badge badge-gray">Archived</span>{% endif %}
           {% if not s.is_owner %}<span class="badge badge-green">Shared</span>{% endif %}
+          {% if not s.pinned and not s.archived and s.is_owner %}<span class="badge badge-green">Active</span>{% endif %}
         </td>
         <td style="font-size:13px; color:#64748b;">{{ s.updated_at[:10] }}</td>
         <td>

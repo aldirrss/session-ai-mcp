@@ -29,6 +29,7 @@ from auth.store import (
     create_token,
     create_oauth_session,
     validate_oauth_session,
+    _detect_client,
 )
 
 _logger = logging.getLogger("session-ai-mcp.oauth")
@@ -318,7 +319,22 @@ async def oauth_token(request: Request) -> JSONResponse:
     if not user:
         return JSONResponse({"error": "invalid_grant", "error_description": "Invalid or expired authorization code"}, status_code=400)
 
-    raw_token = await create_token(user["id"], name="OAuth Token")
+    # Capture client info for token metadata
+    raw_client_name = str(form.get("client_name", ""))
+    user_agent = request.headers.get("user-agent", "")
+    client_ip = (
+        request.headers.get("x-real-ip")
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "")
+    )
+    detected_client = _detect_client(raw_client_name, user_agent)
+
+    raw_token = await create_token(
+        user["id"],
+        name="OAuth Token",
+        client_name=detected_client,
+        created_ip=client_ip,
+    )
     return JSONResponse({
         "access_token": raw_token,
         "token_type": "Bearer",

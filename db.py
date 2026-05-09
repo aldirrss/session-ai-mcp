@@ -158,6 +158,10 @@ _DDL_STEPS = [
     )
     """,
 
+    # Token metadata — client name and IP at token creation time
+    "ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS client_name TEXT",
+    "ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS created_ip  TEXT",
+
     # Indexes
     "CREATE INDEX IF NOT EXISTS idx_users_email          ON users (email)",
     "CREATE INDEX IF NOT EXISTS idx_users_username       ON users (username)",

@@ -162,7 +162,26 @@ async def exchange_oauth_code(
     return await get_user_by_id(user_id)
 
 
-async def create_token(user_id: str, name: str = "OAuth Token") -> str:
+def _detect_client(client_name: str, user_agent: str = "") -> str:
+    """Detect client type from client_name or User-Agent."""
+    combined = (client_name + " " + user_agent).lower()
+    if "claude.ai" in combined or "claude-web" in combined:
+        return "claude.ai Web"
+    if "vscode" in combined or "visual studio code" in combined:
+        return "VSCode Extension"
+    if "claude-code" in combined or "claude_code" in combined or "claudecode" in combined:
+        return "Claude Code CLI"
+    if client_name:
+        return client_name[:64]
+    return "Unknown Client"
+
+
+async def create_token(
+    user_id: str,
+    name: str = "OAuth Token",
+    client_name: str = "",
+    created_ip: str = "",
+) -> str:
     """Create a new personal access token and return the raw value."""
     raw = secrets.token_urlsafe(32)
     token_hash = _hash_token(raw)
@@ -171,11 +190,12 @@ async def create_token(user_id: str, name: str = "OAuth Token") -> str:
     async with pool.acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO user_tokens (user_id, token_hash, token_prefix, name, expires_at)
-            VALUES ($1::uuid, $2, $3, $4, NOW() + ($5 || ' seconds')::interval)
+            INSERT INTO user_tokens
+                (user_id, token_hash, token_prefix, name, expires_at, client_name, created_ip)
+            VALUES ($1::uuid, $2, $3, $4, NOW() + ($5 || ' seconds')::interval, $6, $7)
             """,
             user_id, token_hash, token_prefix, name,
-            str(config.TOKEN_TTL_SECONDS),
+            str(config.TOKEN_TTL_SECONDS), client_name or None, created_ip or None,
         )
     return raw
 
@@ -185,7 +205,8 @@ async def list_tokens(user_id: str) -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, name, token_prefix, last_used_at, expires_at, revoked, created_at
+            SELECT id, name, token_prefix, client_name, created_ip,
+                   last_used_at, expires_at, revoked, created_at
             FROM user_tokens
             WHERE user_id = $1::uuid
             ORDER BY created_at DESC
@@ -197,6 +218,8 @@ async def list_tokens(user_id: str) -> list[dict]:
             "id": str(r["id"]),
             "name": r["name"],
             "prefix": r["token_prefix"],
+            "client_name": r["client_name"] or "Unknown Client",
+            "created_ip": r["created_ip"] or "—",
             "last_used_at": r["last_used_at"].isoformat() if r["last_used_at"] else None,
             "expires_at": r["expires_at"].isoformat() if r["expires_at"] else None,
             "revoked": r["revoked"],
@@ -204,6 +227,20 @@ async def list_tokens(user_id: str) -> list[dict]:
         }
         for r in rows
     ]
+
+
+async def delete_token(token_id: str, user_id: str) -> bool:
+    """Permanently delete a revoked token."""
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            """
+            DELETE FROM user_tokens
+            WHERE id = $1::uuid AND user_id = $2::uuid AND revoked = true
+            """,
+            token_id, user_id,
+        )
+    return result == "DELETE 1"
 
 
 async def revoke_token(token_id: str, user_id: str) -> bool:
