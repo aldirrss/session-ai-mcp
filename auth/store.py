@@ -254,6 +254,25 @@ async def create_token(
     return raw
 
 
+async def create_pat(user_id: str, label: str = "") -> str:
+    """Create a non-expiring Personal Access Token and return the raw value."""
+    raw = secrets.token_urlsafe(32)
+    token_hash = _hash_token(raw)
+    token_prefix = raw[:8]
+    name = label.strip() or "Personal Access Token"
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO user_tokens
+                (user_id, token_hash, token_prefix, name, expires_at, client_name, created_ip)
+            VALUES ($1::uuid, $2, $3, $4, NULL, $5, NULL)
+            """,
+            user_id, token_hash, token_prefix, name, "Personal Access Token",
+        )
+    return raw
+
+
 async def list_tokens(user_id: str) -> list[dict]:
     pool = await db.get_pool()
     async with pool.acquire() as conn:

@@ -8,6 +8,42 @@
 
 {% if flash %}<div class="flash">Done.</div>{% endif %}
 
+{% if new_pat %}
+<div class="card" style="margin-bottom:16px; border-color:#bbf7d0; background:#f0fdf4;">
+  <div class="section-title" style="color:#15803d;">Personal Access Token Generated</div>
+  <p style="font-size:13px; color:#166534; margin-bottom:12px;">
+    ⚠️ Salin token ini sekarang — <strong>tidak akan ditampilkan lagi.</strong>
+  </p>
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:20px;">
+    <code id="pat-value" style="flex:1; font-size:12px; background:#fff; border:1px solid #bbf7d0;
+          padding:10px 12px; border-radius:8px; word-break:break-all; color:#166534;">{{ new_pat }}</code>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('pat-value').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)"
+            class="btn btn-ghost btn-sm" type="button" style="white-space:nowrap;">Copy</button>
+  </div>
+
+  <div class="section-title" style="margin-bottom:8px;">Cara Pakai di Claude Code / VSCode</div>
+  <p style="font-size:13px; color:#64748b; margin-bottom:8px;">
+    Tambahkan konfigurasi berikut ke
+    <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;">~/.claude/mcp_settings.json</code>
+    atau file <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;">.mcp.json</code> di project:
+  </p>
+  <pre id="mcp-config" style="background:#0f172a; color:#e2e8f0; padding:16px; border-radius:8px; font-size:12px;
+       overflow-x:auto; line-height:1.6; margin-bottom:12px;">{
+  "mcpServers": {
+    "session": {
+      "type": "http",
+      "url": "{{ base_url }}/mcp",
+      "headers": {
+        "Authorization": "Bearer {{ new_pat }}"
+      }
+    }
+  }
+}</pre>
+  <button onclick="navigator.clipboard.writeText(document.getElementById('mcp-config').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy config',2000)"
+          class="btn btn-ghost btn-sm" type="button">Copy config</button>
+</div>
+{% endif %}
+
 <div class="card" style="margin-bottom:16px;">
   <div class="section-title">Profile</div>
   <table style="width:auto;">
@@ -17,20 +53,39 @@
   </table>
 </div>
 
+<!-- Generate Personal Access Token -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="section-title">Personal Access Token</div>
+  <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
+    Generate token yang disimpan langsung di config file MCP — tidak perlu OAuth ulang setiap VSCode/CLI restart.
+    Token tidak memiliki masa expired dan bisa di-revoke kapan saja.
+  </p>
+  <form method="POST" action="/panel/web/account/action" style="display:flex; gap:8px; align-items:flex-end;">
+    <input type="hidden" name="action" value="create_pat"/>
+    <div style="flex:1;">
+      <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:5px;">
+        Label (opsional)
+      </label>
+      <input type="text" name="label" placeholder="mis. VSCode Personal, MacBook Pro…" style="width:100%;"/>
+    </div>
+    <button class="btn btn-primary" type="submit">Generate PAT</button>
+  </form>
+</div>
+
 <div class="card">
   <div class="section-title">Active Tokens</div>
   <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
-    Tokens are issued automatically when you connect via OAuth.
-    Revoke a token to disconnect that client. Revoked tokens can be permanently deleted.
+    OAuth tokens dibuat otomatis saat connect via browser.
+    PAT dibuat manual di atas. Revoke untuk disconnect client.
   </p>
   {% if tokens %}
   <table>
     <thead>
       <tr>
-        <th>Client</th>
+        <th>Client / Label</th>
         <th>Prefix</th>
         <th>IP</th>
-        <th>First login</th>
+        <th>Created</th>
         <th>Last used</th>
         <th>Expires</th>
         <th></th>
@@ -41,13 +96,14 @@
       <tr style="{% if t.revoked %}opacity:0.45;{% endif %}">
         <td>
           <div style="font-size:14px; font-weight:500;">{{ t.client_name }}</div>
+          <div style="font-size:12px; color:#94a3b8;">{{ t.name }}</div>
           {% if t.revoked %}<span class="badge badge-gray" style="font-size:11px;">Revoked</span>{% endif %}
         </td>
         <td><code style="font-size:12px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">{{ t.prefix }}…</code></td>
         <td style="font-size:13px; color:#64748b;">{{ t.created_ip }}</td>
         <td style="font-size:13px; color:#64748b;">{{ t.created_at[:10] }}</td>
         <td style="font-size:13px; color:#64748b;">{{ t.last_used_at[:10] if t.last_used_at else 'Never' }}</td>
-        <td style="font-size:13px; color:#64748b;">{{ t.expires_at[:10] if t.expires_at else '—' }}</td>
+        <td style="font-size:13px; color:#64748b;">{{ t.expires_at[:10] if t.expires_at else '∞' }}</td>
         <td style="white-space:nowrap;">
           {% if not t.revoked %}
           <form method="POST" action="/panel/web/account/action" style="display:inline;">
@@ -72,7 +128,7 @@
   {% else %}
   <div class="empty">
     <h3>No tokens yet</h3>
-    <p>Connect via OAuth to generate a token.</p>
+    <p>Connect via OAuth atau generate PAT di atas.</p>
   </div>
   {% endif %}
 </div>

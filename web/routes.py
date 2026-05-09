@@ -23,6 +23,7 @@ from auth.store import (
     list_tokens,
     revoke_token,
     delete_token,
+    create_pat,
 )
 from tools.sessions.store import (
     list_sessions,
@@ -302,6 +303,14 @@ async def web_account_action(request: Request) -> Response:
         token_id = str(form.get("token_id", ""))
         if token_id:
             await delete_token(token_id, user["id"])
+    elif action == "create_pat":
+        label = str(form.get("label", "")).strip()
+        raw_token = await create_pat(user["id"], label)
+        tokens = await list_tokens(user["id"])
+        count = await _inbox_count(user)
+        return _render("account.html", user=user, tokens=tokens, flash="",
+                       new_pat=raw_token, pat_label=label or "Personal Access Token",
+                       inbox_count=count, active_page="account")
 
     return RedirectResponse("/panel/web/account?msg=done", status_code=302)
 
