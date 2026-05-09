@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Account — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Account</h1>
+</div>
+
+{% if flash %}<div class="flash">Done.</div>{% endif %}
+
+<div class="card" style="margin-bottom:16px;">
+  <div class="section-title">Profile</div>
+  <table style="width:auto;">
+    <tr><td style="padding:6px 16px 6px 0; font-size:13px; color:#64748b;">Username</td><td style="font-size:14px; font-weight:500;">{{ user.username }}</td></tr>
+    <tr><td style="padding:6px 16px 6px 0; font-size:13px; color:#64748b;">Email</td><td style="font-size:14px;">{{ user.email }}</td></tr>
+    <tr><td style="padding:6px 16px 6px 0; font-size:13px; color:#64748b;">User ID</td><td><code style="font-size:12px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">{{ user.id }}</code></td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="section-title">Active Tokens</div>
+  <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
+    Tokens are issued automatically when you connect Claude Code CLI via OAuth.
+    Revoke a token to disconnect that client.
+  </p>
+  {% if tokens %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Prefix</th>
+        <th>Last used</th>
+        <th>Expires</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for t in tokens %}
+      <tr style="{% if t.revoked %}opacity:0.45;{% endif %}">
+        <td style="font-size:14px;">{{ t.name }}</td>
+        <td><code style="font-size:12px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">{{ t.prefix }}…</code></td>
+        <td style="font-size:13px; color:#64748b;">{{ t.last_used_at[:10] if t.last_used_at else 'Never' }}</td>
+        <td style="font-size:13px; color:#64748b;">{{ t.expires_at[:10] if t.expires_at else '—' }}</td>
+        <td>
+          {% if not t.revoked %}
+          <form method="POST" action="/web/account/action">
+            <input type="hidden" name="action" value="revoke_token"/>
+            <input type="hidden" name="token_id" value="{{ t.id }}"/>
+            <button class="btn btn-danger btn-sm" type="submit"
+                    onclick="return confirm('Revoke this token?')">Revoke</button>
+          </form>
+          {% else %}
+          <span class="badge badge-gray">Revoked</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <h3>No tokens yet</h3>
+    <p>Connect Claude Code CLI using OAuth to generate a token.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

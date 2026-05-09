@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: #f8fafc; color: #0f172a; min-height: 100vh; }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    nav { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 24px;
+          display: flex; align-items: center; gap: 24px; height: 56px; }
+    .nav-brand { font-weight: 700; font-size: 15px; color: #0f172a; letter-spacing: -.01em; }
+    .nav-links { display: flex; gap: 4px; flex: 1; }
+    .nav-links a { padding: 6px 12px; border-radius: 6px; font-size: 14px; color: #475569; }
+    .nav-links a:hover { background: #f1f5f9; color: #0f172a; text-decoration: none; }
+    .nav-links a.active { background: #eff6ff; color: #2563eb; font-weight: 500; }
+    .nav-user { font-size: 13px; color: #64748b; display: flex; align-items: center; gap: 12px; }
+    .nav-user strong { color: #0f172a; }
+
+    /* Layout */
+    .container { max-width: 1024px; margin: 0 auto; padding: 32px 24px; }
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .page-header p { color: #64748b; font-size: 14px; }
+
+    /* Cards */
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; }
+    .card + .card { margin-top: 16px; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+           border: none; border-radius: 8px; font-size: 14px; font-weight: 500;
+           cursor: pointer; transition: background .15s, color .15s; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-sm { padding: 5px 10px; font-size: 13px; }
+    .btn-ghost { background: transparent; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-ghost:hover { background: #f8fafc; }
+    .btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fee2e2; }
+
+    /* Forms */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 5px; }
+    input[type=text], input[type=email], input[type=password], textarea, select {
+      width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: 14px; outline: none; transition: border-color .15s; background: #fff; }
+    input:focus, textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+    textarea { resize: vertical; min-height: 120px; font-family: inherit; }
+
+    /* Alerts */
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+    .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 12px; font-weight: 600; color: #64748b;
+         text-transform: uppercase; letter-spacing: .04em; padding: 8px 12px;
+         border-bottom: 1px solid #e2e8f0; }
+    td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    /* Badge */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px;
+             font-size: 11px; font-weight: 600; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-yellow { background: #fef9c3; color: #a16207; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+
+    /* Prose (session content) */
+    .prose { font-size: 14px; line-height: 1.7; color: #374151; white-space: pre-wrap;
+             font-family: 'SF Mono', 'Fira Code', monospace; }
+
+    /* Search bar */
+    .search-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+    .search-bar input { flex: 1; }
+
+    /* Flash */
+    .flash { font-size: 13px; padding: 8px 12px; border-radius: 6px;
+             background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 16px; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid #e2e8f0; margin: 20px 0; }
+
+    /* Section header */
+    .section-title { font-size: 13px; font-weight: 600; color: #374151;
+                     text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+
+    /* Share link box */
+    .share-box { display: flex; gap: 8px; align-items: center; background: #f8fafc;
+                 border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
+    .share-box code { flex: 1; font-size: 13px; color: #2563eb; word-break: break-all; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 48px 24px; color: #64748b; }
+    .empty h3 { font-size: 16px; margin-bottom: 6px; color: #374151; }
+    .empty p { font-size: 14px; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% if user %}
+<nav>
+  <span class="nav-brand">{{ app_name }}</span>
+  <div class="nav-links">
+    <a href="/web/sessions" {% if active_page == 'sessions' %}class="active"{% endif %}>Sessions</a>
+    <a href="/web/account"  {% if active_page == 'account'  %}class="active"{% endif %}>Account</a>
+  </div>
+  <div class="nav-user">
+    <strong>{{ user.username }}</strong>
+    <form method="POST" action="/web/logout" style="margin:0">
+      <button class="btn btn-ghost btn-sm" type="submit">Logout</button>
+    </form>
+  </div>
+</nav>
+{% endif %}
+<div class="container">
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

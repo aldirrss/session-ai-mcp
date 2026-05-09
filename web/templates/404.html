@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Not Found — {{ app_name }}{% endblock %}
+{% block content %}
+<div class="empty" style="margin-top:80px;">
+  <h3>Page not found</h3>
+  <p>The session or page you're looking for doesn't exist or you don't have access.</p>
+  <a href="/web/sessions" class="btn btn-primary" style="margin-top:16px; display:inline-flex;">Back to Sessions</a>
+</div>
+{% endblock %}

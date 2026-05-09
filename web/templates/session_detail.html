@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ session.title }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+  <a href="/web/sessions" style="font-size:14px; color:#64748b;">← Sessions</a>
+</div>
+
+{% if flash %}
+<div class="flash">Action completed: {{ flash }}</div>
+{% endif %}
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; gap:16px; flex-wrap:wrap;">
+  <div>
+    <h1 style="font-size:22px; font-weight:700;">{{ session.title }}</h1>
+    <div style="font-size:13px; color:#64748b; margin-top:4px;">
+      ID: <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">{{ session.id }}</code>
+      &nbsp;·&nbsp; Updated: {{ session.updated_at[:16].replace('T', ' ') }}
+      {% if session.pinned %}&nbsp;·&nbsp; <span class="badge badge-blue">Pinned</span>{% endif %}
+      {% if session.archived %}&nbsp;·&nbsp; <span class="badge badge-gray">Archived</span>{% endif %}
+    </div>
+  </div>
+  {% if is_owner %}
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <form method="POST" action="/web/sessions/{{ session.id }}/action">
+      <input type="hidden" name="action" value="{% if session.pinned %}unpin{% else %}pin{% endif %}"/>
+      <button class="btn btn-ghost btn-sm" type="submit">
+        {% if session.pinned %}Unpin{% else %}Pin{% endif %}
+      </button>
+    </form>
+    <form method="POST" action="/web/sessions/{{ session.id }}/action">
+      <input type="hidden" name="action" value="{% if session.archived %}restore{% else %}archive{% endif %}"/>
+      <button class="btn btn-ghost btn-sm" type="submit">
+        {% if session.archived %}Restore{% else %}Archive{% endif %}
+      </button>
+    </form>
+    <form method="POST" action="/web/sessions/{{ session.id }}/action"
+          onsubmit="return confirm('Delete this session permanently?')">
+      <input type="hidden" name="action" value="delete"/>
+      <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Content -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="section-title">Content</div>
+  <div class="prose">{% if session.content %}{{ session.content }}{% else %}<span style="color:#94a3b8;">No content yet.</span>{% endif %}</div>
+</div>
+
+{% if is_owner %}
+<!-- Rename -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="section-title">Rename</div>
+  <form method="POST" action="/web/sessions/{{ session.id }}/action" style="display:flex; gap:8px;">
+    <input type="hidden" name="action" value="rename"/>
+    <input type="text" name="title" value="{{ session.title }}" style="flex:1;"/>
+    <button class="btn btn-ghost" type="submit">Rename</button>
+  </form>
+</div>
+
+<!-- Share: invite members -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="section-title">Shared Members (read-write)</div>
+  {% if members %}
+  <table style="margin-bottom:16px;">
+    <thead><tr><th>Username</th><th>Email</th><th>Joined</th><th></th></tr></thead>
+    <tbody>
+    {% for m in members %}
+      <tr>
+        <td>{{ m.username }}</td>
+        <td style="font-size:13px; color:#64748b;">{{ m.email }}</td>
+        <td style="font-size:13px; color:#64748b;">{{ m.joined_at[:10] }}</td>
+        <td>
+          <form method="POST" action="/web/sessions/{{ session.id }}/action">
+            <input type="hidden" name="action" value="remove_member"/>
+            <input type="hidden" name="member_id" value="{{ m.id }}"/>
+            <button class="btn btn-danger btn-sm" type="submit">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="font-size:13px; color:#94a3b8; margin-bottom:16px;">No members yet.</p>
+  {% endif %}
+  <form method="POST" action="/web/sessions/{{ session.id }}/action" style="display:flex; gap:8px;">
+    <input type="hidden" name="action" value="invite"/>
+    <input type="email" name="email" placeholder="Invite by email…" style="flex:1;"/>
+    <button class="btn btn-primary" type="submit">Invite</button>
+  </form>
+</div>
+
+<!-- Share: public link -->
+<div class="card">
+  <div class="section-title">Public Read-Only Link</div>
+  {% if share_token %}
+  <div class="share-box" style="margin-bottom:12px;">
+    <code>{{ public_url }}</code>
+    <button onclick="navigator.clipboard.writeText('{{ public_url }}')" class="btn btn-ghost btn-sm" type="button">Copy</button>
+  </div>
+  <form method="POST" action="/web/sessions/{{ session.id }}/action">
+    <input type="hidden" name="action" value="share_revoke"/>
+    <button class="btn btn-danger btn-sm" type="submit">Revoke link</button>
+  </form>
+  {% else %}
+  <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
+    Generate a public link so anyone (without an account) can read this session.
+  </p>
+  <form method="POST" action="/web/sessions/{{ session.id }}/action">
+    <input type="hidden" name="action" value="share_create"/>
+    <button class="btn btn-primary" type="submit">Generate public link</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+services:
+  mcp:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - MCP_EXTERNAL_URL=${MCP_EXTERNAL_URL}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8765
+      - TOKEN_TTL_DAYS=${TOKEN_TTL_DAYS:-30}
+      - APP_NAME=${APP_NAME:-session-ai-mcp}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: session_ai_mcp
+      POSTGRES_USER: mcp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcp -d session_ai_mcp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

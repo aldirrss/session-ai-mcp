@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Sessions — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Sessions</h1>
+  <p>Your sessions and sessions shared with you.</p>
+</div>
+
+{% if flash == 'deleted' %}
+<div class="flash">Session deleted successfully.</div>
+{% endif %}
+
+<form class="search-bar" method="GET" action="/web/sessions">
+  <input type="text" name="q" value="{{ query }}" placeholder="Search sessions…"/>
+  <button class="btn btn-ghost" type="submit">Search</button>
+  {% if query %}<a class="btn btn-ghost" href="/web/sessions">Clear</a>{% endif %}
+</form>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <div>
+    {% if show_archived %}
+      <a href="/web/sessions" class="btn btn-ghost btn-sm">Hide archived</a>
+    {% else %}
+      <a href="/web/sessions?archived=1" class="btn btn-ghost btn-sm">Show archived</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if sessions %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Owner</th>
+        <th>Status</th>
+        <th>Updated</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr>
+        <td>
+          <a href="/web/sessions/{{ s.id }}" style="font-weight:500; color:#0f172a;">{{ s.title }}</a>
+          <div style="font-size:12px; color:#94a3b8; margin-top:2px;">{{ s.id }}</div>
+        </td>
+        <td style="font-size:13px; color:#475569;">
+          {% if s.is_owner %}You{% else %}{{ s.owner_username }}{% endif %}
+        </td>
+        <td>
+          {% if s.pinned %}<span class="badge badge-blue">Pinned</span> {% endif %}
+          {% if s.archived %}<span class="badge badge-gray">Archived</span> {% endif %}
+          {% if not s.is_owner %}<span class="badge badge-green">Shared</span>{% endif %}
+        </td>
+        <td style="font-size:13px; color:#64748b;">{{ s.updated_at[:10] }}</td>
+        <td>
+          <a href="/web/sessions/{{ s.id }}" class="btn btn-ghost btn-sm">Open</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">
+  <h3>No sessions yet</h3>
+  <p>Sessions are created by Claude when you use session_create via MCP.</p>
+</div>
+{% endif %}
+{% endblock %}
