@@ -1,9 +1,9 @@
 import logging
+from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
 
 from .store import create_session, write_session, read_session, list_sessions
-from .models import SessionCreateInput, SessionWriteInput, SessionReadInput, SessionListInput
 from auth.context import get_current_user
 
 _logger = logging.getLogger("session-ai-mcp.sessions")
@@ -26,7 +26,7 @@ def register(mcp: FastMCP) -> None:
             "openWorldHint": False,
         },
     )
-    async def _session_create(params: SessionCreateInput) -> str:
+    async def _session_create(title: str, content: str = "") -> str:
         """
         Create a new session and return its ID.
 
@@ -34,11 +34,11 @@ def register(mcp: FastMCP) -> None:
         Save the returned ID — you will use it with session_write and session_read.
 
         Args:
-            params.title: Short human-readable title (e.g. 'MCP Server Build').
-            params.content: Optional initial context.
+            title: Short human-readable title (e.g. 'MCP Server Build').
+            content: Optional initial context.
         """
         try:
-            session = await create_session(params.title, params.content)
+            session = await create_session(title, content)
             return (
                 f"Session created.\n"
                 f"**ID:** `{session['id']}`\n"
@@ -59,7 +59,7 @@ def register(mcp: FastMCP) -> None:
             "openWorldHint": False,
         },
     )
-    async def _session_write(params: SessionWriteInput) -> str:
+    async def _session_write(session_id: str, content: str) -> str:
         """
         Overwrite the full content of a session.
 
@@ -82,15 +82,15 @@ def register(mcp: FastMCP) -> None:
         - [ ] [next task]
 
         Args:
-            params.session_id: UUID returned by session_create.
-            params.content: Full updated content (markdown).
+            session_id: UUID returned by session_create.
+            content: Full updated content (markdown).
         """
         try:
-            session = await write_session(params.session_id, params.content)
+            session = await write_session(session_id, content)
             if session is None:
-                return _error(f"Session '{params.session_id}' not found or access denied.")
+                return _error(f"Session '{session_id}' not found or access denied.")
             return (
-                f"Session `{params.session_id}` updated.\n"
+                f"Session `{session_id}` updated.\n"
                 f"**Title:** {session['title']}\n"
                 f"**Updated:** {session['updated_at']}"
             )
@@ -107,19 +107,19 @@ def register(mcp: FastMCP) -> None:
             "openWorldHint": False,
         },
     )
-    async def _session_read(params: SessionReadInput) -> str:
+    async def _session_read(session_id: str) -> str:
         """
         Read the full content of a session.
 
         Use this at the start of a conversation to restore context from a previous session.
 
         Args:
-            params.session_id: UUID of the session to read.
+            session_id: UUID of the session to read.
         """
         try:
-            session = await read_session(params.session_id)
+            session = await read_session(session_id)
             if session is None:
-                return f"Session `{params.session_id}` not found or access denied."
+                return f"Session `{session_id}` not found or access denied."
 
             pin_marker = " [PINNED]" if session.get("pinned") else ""
             archived_marker = " [ARCHIVED]" if session.get("archived") else ""
@@ -145,17 +145,17 @@ def register(mcp: FastMCP) -> None:
             "openWorldHint": False,
         },
     )
-    async def _session_list(params: SessionListInput) -> str:
+    async def _session_list(show_archived: bool = False) -> str:
         """
         List all sessions you own or have been invited to.
 
         Pinned sessions appear first. Use the returned IDs with session_read.
 
         Args:
-            params.show_archived: Include archived sessions (default false).
+            show_archived: Include archived sessions (default false).
         """
         try:
-            sessions = await list_sessions(show_archived=params.show_archived)
+            sessions = await list_sessions(show_archived=show_archived)
             if not sessions:
                 return "No sessions found."
 
