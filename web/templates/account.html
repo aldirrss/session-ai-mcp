@@ -12,7 +12,7 @@
 <div class="card" style="margin-bottom:16px; border-color:#bbf7d0; background:#f0fdf4;">
   <div class="section-title" style="color:#15803d;">Personal Access Token Generated</div>
   <p style="font-size:13px; color:#166534; margin-bottom:12px;">
-    ⚠️ Salin token ini sekarang — <strong>tidak akan ditampilkan lagi.</strong>
+    ⚠️ Copy this token now — <strong>it will not be shown again.</strong>
   </p>
   <div style="display:flex; gap:8px; align-items:center; margin-bottom:20px;">
     <code id="pat-value" style="flex:1; font-size:12px; background:#fff; border:1px solid #bbf7d0;
@@ -21,11 +21,11 @@
             class="btn btn-ghost btn-sm" type="button" style="white-space:nowrap;">Copy</button>
   </div>
 
-  <div class="section-title" style="margin-bottom:8px;">Cara Pakai di Claude Code / VSCode</div>
+  <div class="section-title" style="margin-bottom:8px;">How to use in Claude Code / VSCode</div>
   <p style="font-size:13px; color:#64748b; margin-bottom:8px;">
-    Tambahkan konfigurasi berikut ke
+    Add the following to
     <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;">~/.claude/mcp_settings.json</code>
-    atau file <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;">.mcp.json</code> di project:
+    or a <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;">.mcp.json</code> file in your project:
   </p>
   <pre id="mcp-config" style="background:#0f172a; color:#e2e8f0; padding:16px; border-radius:8px; font-size:12px;
        overflow-x:auto; line-height:1.6; margin-bottom:12px;">{
@@ -57,16 +57,16 @@
 <div class="card" style="margin-bottom:16px;">
   <div class="section-title">Personal Access Token</div>
   <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
-    Generate token yang disimpan langsung di config file MCP — tidak perlu OAuth ulang setiap VSCode/CLI restart.
-    Token tidak memiliki masa expired dan bisa di-revoke kapan saja.
+    Generate a token stored directly in your MCP config file — no OAuth re-auth needed on every VSCode/CLI restart.
+    Tokens do not expire and can be revoked at any time.
   </p>
   <form method="POST" action="/panel/web/account/action" style="display:flex; gap:8px; align-items:flex-end;">
     <input type="hidden" name="action" value="create_pat"/>
     <div style="flex:1;">
       <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:5px;">
-        Label (opsional)
+        Label (optional)
       </label>
-      <input type="text" name="label" placeholder="mis. VSCode Personal, MacBook Pro…" style="width:100%;"/>
+      <input type="text" name="label" placeholder="e.g. VSCode Personal, MacBook Pro…" style="width:100%;"/>
     </div>
     <button class="btn btn-primary" type="submit">Generate PAT</button>
   </form>
@@ -75,8 +75,8 @@
 <div class="card">
   <div class="section-title">Active Tokens</div>
   <p style="font-size:13px; color:#64748b; margin-bottom:16px;">
-    OAuth tokens dibuat otomatis saat connect via browser.
-    PAT dibuat manual di atas. Revoke untuk disconnect client.
+    OAuth tokens are issued automatically when connecting via browser.
+    PATs are created manually above. Revoke to disconnect a client.
   </p>
   {% if tokens %}
   <table>
@@ -128,7 +128,7 @@
   {% else %}
   <div class="empty">
     <h3>No tokens yet</h3>
-    <p>Connect via OAuth atau generate PAT di atas.</p>
+    <p>Connect via OAuth or generate a PAT above.</p>
   </div>
   {% endif %}
 </div>

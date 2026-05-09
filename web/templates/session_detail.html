@@ -7,13 +7,13 @@
 </div>
 
 {% if flash == 'email_not_found' %}
-<div class="alert alert-error">Email tidak terdaftar. Pastikan user sudah memiliki akun.</div>
+<div class="alert alert-error">Email not registered. Make sure the user already has an account.</div>
 {% elif flash == 'already_member' %}
-<div class="alert alert-error">User tersebut sudah menjadi member session ini.</div>
+<div class="alert alert-error">That user is already a member of this session.</div>
 {% elif flash == 'already_invited' %}
-<div class="alert alert-error">Undangan sudah dikirim, menunggu konfirmasi dari user.</div>
+<div class="alert alert-error">Invitation already sent — waiting for the user to respond.</div>
 {% elif flash == 'not_owner' %}
-<div class="alert alert-error">Hanya owner yang bisa mengundang member.</div>
+<div class="alert alert-error">Only the session owner can invite members.</div>
 {% elif flash %}
 <div class="flash">Action completed: {{ flash }}</div>
 {% endif %}
