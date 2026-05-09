@@ -275,22 +275,75 @@ Schema is initialized automatically on first startup via idempotent DDL — no m
 
 ## Deployment
 
-### Reverse Proxy (Nginx example)
+### Reverse Proxy (Nginx)
+
+This server is designed to coexist with other apps under the same domain.
+Routes handled by session-ai-mcp (port `8765`):
+
+| Path | Purpose |
+|---|---|
+| `/mcp` | MCP protocol endpoint |
+| `/oauth/` | OAuth 2.0 authorization server |
+| `/.well-known/` | OAuth discovery metadata |
+| `/panel/web/` | Web portal UI |
+| `/s/` | Public read-only share links |
+
+> **Important:** `/panel/web/` must be declared **before** any broader `/panel` block
+> so Nginx's longest-prefix rule routes it to port `8765` instead of another app.
 
 ```nginx
 server {
     listen 443 ssl;
     server_name mcp.yourdomain.com;
 
-    location / {
-        proxy_pass http://127.0.0.1:8765;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 3600;
+    # Redirect root to login
+    location = / {
+        return 302 /panel/web/login;
     }
+
+    # MCP protocol, OAuth, and discovery — must set Host: localhost
+    location ~ ^/(mcp|oauth|\.well-known) {
+        proxy_pass         http://127.0.0.1:8765;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              "localhost";
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        "upgrade";
+        proxy_read_timeout 300s;
+    }
+
+    # Public share links — no login required
+    location /s/ {
+        proxy_pass         http://127.0.0.1:8765;
+        proxy_http_version 1.1;
+        proxy_set_header   Host      $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+    }
+
+    # Web portal — must come BEFORE any broader /panel block
+    location /panel/web/ {
+        proxy_pass         http://127.0.0.1:8765;
+        proxy_http_version 1.1;
+        proxy_set_header   Host      $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+    }
+
+    # Other /panel apps (other services on the same domain)
+    location /panel {
+        proxy_pass         http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header   Host      $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+    }
+
+    ssl_certificate     /etc/letsencrypt/live/mcp.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mcp.yourdomain.com/privkey.pem;
+}
+
+server {
+    listen 80;
+    server_name mcp.yourdomain.com;
+    return 301 https://$host$request_uri;
 }
 ```
 
