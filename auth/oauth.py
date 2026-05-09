@@ -202,7 +202,7 @@ async def oauth_authorize_get(request: Request) -> Response:
     code_challenge = p.get("code_challenge", "")
     code_challenge_method = p.get("code_challenge_method", "S256")
     state = p.get("state", "")
-    client_name = p.get("client_name", client_id or "MCP Client")
+    client_name = p.get("client_name", "")
 
     if not redirect_uri or not code_challenge or code_challenge_method != "S256":
         return JSONResponse(
@@ -245,7 +245,7 @@ async def oauth_authorize_post(request: Request) -> Response:
     code_challenge = str(form.get("code_challenge", ""))
     state = str(form.get("state", ""))
     action = str(form.get("action", "login"))
-    client_name = client_id or "MCP Client"
+    client_name = str(form.get("client_name", ""))
 
     cancel_url = _build_redirect(redirect_uri, {"error": "access_denied", "state": state})
 

@@ -171,6 +171,12 @@ async def exchange_oauth_code(
     return user
 
 
+def _is_random_token(s: str) -> bool:
+    """Return True if string looks like a generated token/ID rather than a human-readable name."""
+    import re
+    return bool(s) and len(s) >= 12 and " " not in s and bool(re.match(r'^[A-Za-z0-9_\-]{12,}$', s))
+
+
 def _detect_client(redirect_uri: str = "", client_name: str = "", user_agent: str = "") -> str:
     """Detect client type from redirect_uri (most reliable), then client_name/User-Agent."""
     uri = redirect_uri.lower()
@@ -213,13 +219,13 @@ def _detect_client(redirect_uri: str = "", client_name: str = "", user_agent: st
             return "Gemini CLI"
         if "claude" in cn or "claude" in ua:
             return "Claude Code CLI"
-        # Show raw client_name if available, else generic CLI label
-        if client_name:
+        # Show raw client_name if it's human-readable, else generic CLI label
+        if client_name and not _is_random_token(client_name):
             return client_name[:64]
         return "Claude Code CLI"
 
-    # --- Fallback: use client_name as-is (best effort) ---
-    if client_name:
+    # --- Fallback: use client_name as-is, but skip random-looking tokens ---
+    if client_name and not _is_random_token(client_name):
         return client_name[:64]
     return "Unknown Client"
 
