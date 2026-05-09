@@ -6,12 +6,12 @@ services:
     ports:
       - ${MCP_PORT:-8765}:${MCP_PORT:-8765}
     environment:
-      DATABASE_URL=${DATABASE_URL}
-      MCP_EXTERNAL_URL=${MCP_EXTERNAL_URL}
-      MCP_HOST=${MCP_HOST:-0.0.0.0}
-      MCP_PORT=${MCP_PORT:-8765}
-      TOKEN_TTL_DAYS=${TOKEN_TTL_DAYS:-30}
-      APP_NAME=${APP_NAME:-session-ai-mcp}
+      - DATABASE_URL=${DATABASE_URL}
+      - MCP_EXTERNAL_URL=${MCP_EXTERNAL_URL}
+      - MCP_HOST=${MCP_HOST:-0.0.0.0}
+      - MCP_PORT=${MCP_PORT:-8765}
+      - TOKEN_TTL_DAYS=${TOKEN_TTL_DAYS:-30}
+      - APP_NAME=${APP_NAME:-session-ai-mcp}
     depends_on:
       db:
         condition: service_healthy
