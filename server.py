@@ -62,7 +62,7 @@ _logger = logging.getLogger("session-ai-mcp")
 
 
 # ---------------------------------------------------------------------------
-# MCP server (no lifespan — handled by outer Starlette app)
+# MCP server
 # ---------------------------------------------------------------------------
 
 mcp = FastMCP(name=config.APP_NAME)
@@ -71,17 +71,22 @@ _mcp_app = mcp.streamable_http_app()
 
 
 # ---------------------------------------------------------------------------
-# Lifespan — runs init_schema() on startup before any request is served
+# Lifespan — init DB then start MCP session manager (requires its own lifespan)
 # ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app):
+    # 1. Initialize database schema first
     await db.init_schema()
     _logger.info("Database schema ready")
-    try:
-        yield
-    finally:
-        await db.close_pool()
+
+    # 2. Run MCP app's own lifespan — this initializes StreamableHTTPSessionManager
+    #    task group which is required before any /mcp request can be served.
+    async with _mcp_app.router.lifespan_context(_mcp_app):
+        try:
+            yield
+        finally:
+            await db.close_pool()
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +106,6 @@ app = Starlette(
         Route("/health", health),
         *oauth_routes,
         *web_routes,
-        # MCP app handles /mcp — must be last (catch-all)
         Mount("/", app=_mcp_app),
     ],
     lifespan=lifespan,
